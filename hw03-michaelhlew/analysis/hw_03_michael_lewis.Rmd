@@ -1,0 +1,367 @@
+---
+title: "DATA-413/613 HW 3: Lists and Iteration"
+author: "Michael Lewis"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    number_sections: yes
+    toc: no
+    toc_depth: 4
+urlcolor: "blue"
+params:
+  solutions: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = params$solutions,
+  eval = params$solutions,
+  fig.align = "center",
+  fig.height = 3,
+  fig.width = 5
+)
+```
+
+# Instructions {.unnumbered}
+
+1.  Clone this homework repo to your homework directory as a new repo.
+2.  Rename the starter file under the analysis directory as `hw_03_yourname.Rmd` and use it for your solutions.
+3.  Modify the "author" field in the YAML header.
+4.  Stage and Commit R Markdown and HTML files (no PDF files).
+5.  **Push both .Rmd and HTML files to GitHub**.
+
+-   Make sure you have knitted to HTML prior to staging, committing, and pushing your final submission.
+
+6.  **Commit each time you answer a part of question, e.g. 1.1**
+7.  **Push to GitHub after each major question**
+8.  When complete, submit a response in Canvas
+
+-   Only include necessary code to answer the questions.
+
+-   Most of the functions you use should be from the tidyverse. Too much base R will result in point deductions.
+
+-   Use Pull requests and or email to ask me any questions. If you email, please ensure your most recent code is pushed to GitHub.
+
+-   **Learning Outcomes**:
+
+    -   Manipulate vectors in base-R syntax.
+    -   Apply iterations with for loops.
+
+# Grading Rubric {.unnumbered}
+
+| Question.Part: | Points | Topic                                          |
+|----------------|--------|------------------------------------------------|
+| 1.1            | 1.00   | Load the Data                                  |
+| 1.2            | 1.00   | Correct length and Names                       |
+| 1.3            | 1.00   | Values are Removed from the list               |
+| 1.4            | 2.00   | Correct Posterior Mean added to scores         |
+| 1.5            | 2.00   | Correct Column Means added to list             |
+| 1.6            | 2.00   | Extracted values are correct                   |
+| 2.1a           | 2.00   | Proper Function structure                      |
+| 2.1a           | 3.00   | Complete Error checks                          |
+| 2.1b           | 1.00   | Correct Output                                 |
+| 3.1            | 1.00   | Single function with Element names and types   |
+| 3.2            | 3.00   | For Loop is initialized and operates correctly |
+| 3.3            | 3.00   | Correct map output and Plot                    |
+| 3.4            | 1.50   | Correct Output for pvec_f                      |
+| 3.5            | 1.50   | Correct Output for pvec_m                      |
+| 3.6            | 1.00   | Extra Credit                                   |
+| **Total**      | **25** | plus 1 pt Extra Credit                         |
+
+# Working with Lists
+
+Because of their generality, lists (or list-like objects) are often the output of many statistical procedures in R. The file `fpout.RDS` in the data folder contains sample output from using [fitPoly](https://cran.r-project.org/package=fitPoly), a statistical method to quantify properties of locations on the [genome](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5915555/).
+
+1.  Use `read_rds()` and a relative path to read this data into R.
+
+    ```{r}
+    library(tidyverse)
+    read_rds("../data/fpout.rds") -> fpout
+    ```
+
+2.  Use appropriate functions to obtain the length of the list and then the vector of the names of the elements in the list.
+
+    ```{r}
+    length(fpout)
+    names(fpout)
+
+    ```
+
+3.  The `diploscores` element does not provide any information. Remove it from the list in one step.
+
+```{r}
+fpout[[5]] <- NULL
+```
+
+4.  The `scores` element contains the output most users would want. The variables in `scores` called `P0`, `P1`, `P2`, `P3`, `P4`, `P5`, and `P6` contain "posterior probabilities" for each individual for values `0`, `1`, `2`, `3`, `4`, `5`, and `6` (respectively).\
+
+-   A quantity useful in Bayesian analysis is called the "posterior mean" which in this case is calculated as follows:
+    -   $\text{posterior_mean] = (P0 * 0) + (P1 * 1) + (P2 * 2) + (P3 * 3) + (P4 * 4) + (P5 * 5) + (P6 * 6)$.
+
+<!-- -->
+
+-   Calculate the posterior mean for each individual and add this as a new variable in the `scores` data frame.
+
+```{r}
+fpout$scores %>% 
+  mutate(posterior_mean = (
+  
+  (fpout$scores$P0 * 0) + (fpout$scores$P1 * 1) + (fpout$scores$P2 * 2) +     (fpout$scores$P3 * 3) + (fpout$scores$P4 * 4) + (fpout$scores$P5 * 5) + (fpout$scores$P6 * 6) 
+  ) 
+  ) -> fpout$scores
+
+```
+
+5.  Operating on elements within a list.
+
+-   Use a {purrr} function to identify the names of the columns/variables in the `scores` data frame that are *not* of type double.\
+-   Add a new atomic vector element called `col_means` **to the list** that contains just the column means of all the *double* variables in the `scores` data frame.
+
+```{r}
+#The variables that are not type double
+fpout$scores %>%
+  map(is.double) %>%
+  keep(isFALSE) 
+```
+
+```{r}
+#Adding vector element 'col_means'
+fpout$scores %>%
+  select_if(is.double) %>% #only dbl variables
+  map_dbl(mean, na.rm = TRUE) %>%
+  splice() -> col_means
+  #calculate means 
+  
+splice(fpout, col_means) -> fpout #bringing col_means back to fpout
+fpout[[7]] -> fpout$col_means #making it the correct name
+fpout[[7]] <- NULL #cleaning up
+
+fpout$col_means
+
+```
+
+6.  Extract elements from a list. 
+
+-   Demonstrate three different ways to extract the `col_means` element from the list. The extracted element must *not be a list*.
+
+```{r}
+fpout[[7]]
+
+fpout$col_means
+
+fpout[["col_means"]]
+
+```
+
+-   Show two ways to extract the third element of `col_means`
+
+```{r}
+fpout$col_means[3]
+
+fpout$col_means[c("P1")]
+
+```
+
+# For Loops
+
+Consider the recursive sequence defined by $$
+x_n = x_{n-1} + \frac{|x_{n-3} - x_{n-2}|}{4}.
+$$ In words, element $n$ is the sum of element $n-1$ and the absolute value of the difference between between elements $n-3$ and $n-2$, divided by four. For example, if we let $x_1 = 3$, $x_2 = 1$, and $x_3 = 10$, then $x_4$ is $$
+x_4 = 10 + \frac{|3 - 1|}{4} = 10.5.
+$$
+
+1.  Write a function called `calcn()` that takes as input a vector `x` with the first three elements of this sequence ($x_1$, $x_2$, $x_3$) and an integer `n` denoting the final element of the sequence to calculate.\
+
+    ```{r}
+    #two inputs x (which will need to be defined as a vector), and n 
+    calcn <- function(x, n){
+      
+      vector(mode = "integer", length = n) -> n_length
+
+      #Looping through the equation 
+    for(number in seq_along(n_length)) 
+      {if (number <= 3) 
+        {n_length[number] <- x[number] 
+        }
+        else { 
+          n_length[number] <- n_length[number-1] + (abs(n_length[number-3] - n_length[number-2]))/4 
+        }
+        
+        }
+        print(n_length[n]) 
+    } 
+    ```
+
+-   `calcn(x, n)` should return the value of the `n`^th^ element.
+
+    ```{r}
+
+    #Testing on given examples
+    calcn(x = c(2, 4, 3), n = 3L)
+    calcn(x = c(2, 4, 3), n = 4L)
+    calcn(x = c(2, 4, 3), n = 5L)
+    calcn(x = c(2, 4, 3), n = 6L)
+    calcn(x = c(2, 4, 3), n = 7L)
+
+    ```
+
+-   Include error checking to ensure both inputs are of the correct length and class and `n` is greater than 0.
+
+```{r}
+calcn <- function(x, n){
+  #Checking arguments: length(x) needs to be 3, x has to be an integer, and n greater than zero -- whole function is within an if statement specifying these conditions, anything else leads to error. 
+  
+  if(length(x) == 3 & is.integer(n) & n > 0)  {
+  
+  vector(mode = "integer", length = n) -> n_length
+    
+  for(number in seq_along(n_length)) 
+    
+  {if (number <= 3) 
+    {n_length[number] <- x[number] 
+  }
+    else { 
+      n_length[number] <- n_length[number-1] + (abs(n_length[number-3] - n_length[number-2]))/4 
+    }
+  }
+    
+  return(n_length[n]) 
+    
+    } #End of function, else --> error. 
+  else{
+    stop("Error: the provided inputs are incorrect. Check to make sure the length of x is equal to three, that x or n are both integers, and n is greater than zero.")
+      
+    } 
+} 
+```
+
+For example, in my implementation of `calcn()`, I obtained the following:
+
+-   **Evaluate your function at the following inputs**:
+
+    -   calcn(c(11, 1, 130), 1000L)
+
+    ```{r}
+    calcn(c(11, 1, 130), 1000L)
+    ```
+
+    -   calcn(c(11, 1, 130), 1L)
+
+    ```{r}
+    calcn(c(11, 1, 130), 1L)
+    ```
+
+    -   calcn(c(7, 3, 20), 8L)
+
+    ```{r}
+    calcn(c(7, 3, 20), 8L)
+    ```
+
+```{r error = TRUE}
+#Testing error 
+calcn(c(7, 3), 8L) #incorrect length(x)
+calcn(c(7, 3), -8L) #n is less than zero
+
+```
+
+# Question: Lists, For-loops, and `map_*()`
+
+Lists are often used to save simulation output. You can then extract individual elements from the lists using for-loops.
+
+Consider the $t$-test, often used to test whether or not the true mean of a population for some observations is 0. We can use the following code to simulate data from a [Normal (0,1) distribution](https://en.wikipedia.org/wiki/Normal_distribution), and then use a $t$-test to test if the true mean is 0:
+
+1.  The output of `t.test()` is a list-like object. Use one function to show how many elements are in the list along with their names and class.
+
+    ```{r}
+    set.seed(123)
+    x <- rnorm(n = 10, mean = 0, sd = 1)
+    tout <- t.test(x)
+
+    summary(tout)
+    ```
+
+2.  Write a for-loop to perform the following three operations on iteration `i`:  
+
+    1.  Draw 10 random observations from a normal distribution with mean 0 and standard deviation 2.
+    2.  Run a $t$-test on these 10 observations.
+    3.  Save the output of the $t$-test as the `i`th element in a list called `tlist`.  
+
+-   Set the seed to 1 and run for 1000 iterations.
+
+```{r}
+set.seed(1)
+
+tlist <- list()
+for(i in 1:1000) {
+ t.test(rnorm(10, mean = 0, sd = 2)) -> tout
+ tout -> tlist[[i]]
+} 
+```
+
+3.  Use the appropriate `purrr:map_*` function to extract the sample mean from each test (from 2) and pipe to an appropriate plot to show the sampling distribution of the sample mean.
+
+```{r}
+#Based on t.test output the estimate section of the list is where the mean is stored ("mean of x")
+tlist %>% 
+  map_dbl(~.$estimate) %>% 
+  as.data.frame() %>% 
+  
+#Plot
+ggplot(mapping = aes(x =.)) + 
+  geom_histogram(bins = 45) + 
+  labs(x = "Means of T-tests (n=1,000)") + 
+  ggtitle("Histogram of Means from 1,000 T-tests")
+  
+
+```
+
+-   Hint: Make sure the data going into ggplot is a data frame (tibble)
+
+4.  The $p$-value is an important quantity in statistics. Use a for-loop to extract the $p$-values from each test in part 2 and combine these $p$-values into a single atomic vector called `pvec_f`. Show the first 6 values.
+
+```{r}
+pvec_f <- vector(mode = "double", length = 1000) 
+
+for(i in 1:1000) 
+  {
+tlist[[i]]$p.value -> pvec_f[[i]] 
+  }
+
+head(pvec_f, n = 6)
+
+
+```
+
+4.  Use the appropriate `purrr:map_*` function to extract the $p$-values from each test in part 2 and combine these $p$-values into a single atomic vector called `pvec_m`. Show the first 6 values.
+
+```{r}
+tlist %>% 
+  map_dbl(~.$p.value) -> pvec_m
+
+pvec_m %>% 
+  head(n = 6)
+```
+
+4.  *Extra Credit* $p$-values have a nice property where, if the null hypothesis is true (i.e., the mean of the observations is actually 0), then the $p$-values follow the uniform distribution.
+
+-   Use the data from `pvec_m` to create a [QQ-plot](https://en.wikipedia.org/wiki/Q–Q_plot) and then interpret the plot with regard to whether the $p$-values exhibit a uniform distribution.\
+-   Ensure your plot has appropriate labels for the axes and a title.
+-   Include an abline that is dashed and colored red.
+
+```{r}
+#Base R Version
+qqnorm(pvec_m, pch = 1, frame = FALSE)
+qqline(pvec_m, col = "red", lty = 2)
+
+#Tidyverse
+pvec_m %>% 
+  as_tibble() %>% 
+  ggplot(aes(sample = value)) + 
+  geom_qq() + 
+  geom_qq_line(color = "red", linetype = 2) + 
+  labs(x = "Theoretical Quantiles", y = "Sample Quantiles") + 
+  ggtitle("Normal Q-Q Plot for pvec_m", subtitle = "pvec_m is a vector of p-values from 1k t-tests")
+  
+```
+
+Interpretation: With the exception of some extreme values at both ends of the Q-Q plot, the p-values largely adhere to a linear distribution. Thus, we fail to reject the null hypothesis that the mean of observations are actually zero.
